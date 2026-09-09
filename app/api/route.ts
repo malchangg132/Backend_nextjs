@@ -9,99 +9,116 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-// Handler untuk Preflight Request CORS
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
-// 1. GET (Single): Ambil detail 1 produk berdasarkan ID
-export async function GET(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+// 1. GET: Ambil Semua Produk
+export async function GET() {
   try {
-    const { id } = params;
-
     const { data, error } = await supabaseAdmin
       .from('products')
       .select('*')
-      .eq('id', id)
-      .single();
+      .order('id', { ascending: true });
 
     if (error) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Data produk tidak ditemukan',
-          error_message: error.message,
-        },
-        { status: 404, headers: corsHeaders }
-      );
+      return NextResponse.json({
+        success: false,
+        message: 'Gagal mengambil data dari Supabase',
+        error_message: error.message,
+      }, { status: 400, headers: corsHeaders });
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        data,
-      },
-      { status: 200, headers: corsHeaders }
-    );
+    return NextResponse.json({
+      success: true,
+      data: data || [],
+    }, { status: 200, headers: corsHeaders });
   } catch (err: any) {
-    return NextResponse.json(
-      {
-        success: false,
-        error: err?.message || 'Server Error',
-      },
-      { status: 500, headers: corsHeaders }
-    );
+    return NextResponse.json({
+      success: false,
+      error: err?.message || 'Server Error',
+    }, { status: 500, headers: corsHeaders });
   }
 }
 
-// 2. PUT: Update data produk berdasarkan ID
-export async function PUT(
-  request: Request,
-  { params }: { params: { id: string } }
-) {
+// 2. POST: Tambah Produk Baru
+export async function POST(request: Request) {
   try {
-    const { id } = params;
     const body = await request.json();
+
+    if (!body.title || typeof body.price !== 'number') {
+      return NextResponse.json({
+        success: false,
+        message: 'Field "title" dan "price" wajib diisi!',
+      }, { status: 400, headers: corsHeaders });
+    }
 
     const { data, error } = await supabaseAdmin
       .from('products')
-      .update({
-        title: body.title,
-        price: body.price,
-        stock: body.stock,
-      })
-      .eq('id', id)
+      .insert([
+        {
+          title: body.title,
+          price: body.price,
+          stock: body.stock ?? 0,
+        },
+      ])
       .select();
 
     if (error) {
-      return NextResponse.json(
-        {
-          success: false,
-          message: 'Gagal mengupdate data produk',
-          error_message: error.message,
-        },
-        { status: 400, headers: corsHeaders }
-      );
+      return NextResponse.json({
+        success: false,
+        message: 'Gagal menambah data ke Supabase',
+        error_message: error.message,
+      }, { status: 400, headers: corsHeaders });
     }
 
-    return NextResponse.json(
-      {
-        success: true,
-        message: 'Produk berhasil diperbarui!',
-        data: data[0],
-      },
-      { status: 200, headers: corsHeaders }
-    );
+    return NextResponse.json({
+      success: true,
+      message: 'Produk berhasil dibuat!',
+      data: data[0],
+    }, { status: 201, headers: corsHeaders });
   } catch (err: any) {
-    return NextResponse.json(
-      {
+    return NextResponse.json({
+      success: false,
+      error: err?.message || 'Invalid Request Body',
+    }, { status: 400, headers: corsHeaders });
+  }
+}
+
+// 3. DELETE: Hapus Produk Berdasarkan Query Parameter ?id=...
+export async function DELETE(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (!id) {
+      return NextResponse.json({
         success: false,
-        error: err?.message || 'Server Error',
-      },
-      { status: 500, headers: corsHeaders }
-    );
+        message: 'Query parameter "id" wajib disertakan!',
+      }, { status: 400, headers: corsHeaders });
+    }
+
+    const { error } = await supabaseAdmin
+      .from('products')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      return NextResponse.json({
+        success: false,
+        message: 'Gagal menghapus data dari Supabase',
+        error_message: error.message,
+      }, { status: 400, headers: corsHeaders });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: 'Produk berhasil dihapus!',
+    }, { status: 200, headers: corsHeaders });
+  } catch (err: any) {
+    return NextResponse.json({
+      success: false,
+      error: err?.message || 'Server Error',
+    }, { status: 500, headers: corsHeaders });
   }
 }
