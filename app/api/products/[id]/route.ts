@@ -17,10 +17,10 @@ export async function OPTIONS() {
 // 1. GET (Single): Ambil detail 1 produk berdasarkan ID
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> } // <-- Diubah jadi Promise
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params; // <-- Ditambahkan await
+    const { id } = await params;
 
     const { data, error } = await supabaseAdmin
       .from('products')
@@ -60,10 +60,10 @@ export async function GET(
 // 2. PUT: Update data produk berdasarkan ID
 export async function PUT(
   request: Request,
-  { params }: { params: Promise<{ id: string }> } // <-- Diubah jadi Promise
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params; // <-- Ditambahkan await
+    const { id } = await params;
     const body = await request.json();
 
     const { data, error } = await supabaseAdmin
